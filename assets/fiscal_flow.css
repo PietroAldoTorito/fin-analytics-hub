@@ -1,0 +1,115 @@
+body {
+    background-color: #080c18;
+    color: #e2e8f0;
+    margin: 0;
+    padding: 0;
+    font-family: monospace;
+}
+.page-wrap {
+    padding: 28px 36px;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+/* Header */
+.header-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #00d4ff;
+    letter-spacing: 0.06em;
+    display: inline;
+}
+.header-sub {
+    font-size: 11px;
+    color: #556080;
+    margin-top: 3px;
+}
+.header-wrap {
+    margin-bottom: 22px;
+    border-bottom: 1px solid #1a2236;
+    padding-bottom: 14px;
+}
+/* KPI */
+.kpi-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+.kpi-card {
+    background: #0d1117;
+    border: 1px solid #1a2236;
+    border-left: 3px solid #00d4ff;
+    border-radius: 4px;
+    padding: 14px 18px;
+    flex: 1;
+    min-width: 160px;
+}
+.kpi-title {
+    font-size: 9px;
+    color: #556080;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.kpi-value {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+    color: #00d4ff;
+}
+/* Charts */
+.chart-card {
+    background: #0d1117;
+    border: 1px solid #1a2236;
+    border-radius: 4px;
+    padding: 4px 8px;
+    margin-bottom: 12px;
+}
+.row-2 {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.row-2 > div {
+    flex: 1;
+    min-width: 0;
+}
+/* Controls */
+.controls-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+.ctrl-label {
+    font-size: 11px;
+    color: #556080;
+}
+/* Footer */
+.footer {
+    font-size: 10px;
+    color: #556080;
+    border-top: 1px solid #1a2236;
+    padding-top: 12px;
+    margin-top: 10px;
+}
+/* Radio buttons */
+.radio-group label {
+    color: #e2e8f0 !important;
+    font-family: monospace !important;
+    font-size: 12px !important;
+    cursor: pointer;
+    padding: 4px 10px;
+    border: 1px solid #1a2236;
+    border-radius: 3px;
+    transition: border-color 0.15s;
+}
+.radio-group label:hover {
+    border-color: #00d4ff;
+}
+input[type=radio]:checked + label {
+    border-color: #00d4ff;
+    color: #00d4ff !important;
+}
