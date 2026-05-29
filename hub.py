@@ -15,13 +15,40 @@ Avvio:
 
 import sys
 import os
+import threading
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  PATCH requests.get — aggiunge User-Agent prima di qualsiasi import
+#  (FRED e altri servizi bloccano le richieste senza un browser User-Agent)
+# ─────────────────────────────────────────────────────────────────────────────
+
+import requests as _requests_module
+
+_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
+_orig_requests_get = _requests_module.get
+
+def _get_with_ua(url, **kwargs):
+    h = kwargs.get("headers") or {}
+    h.setdefault("User-Agent", _UA)
+    kwargs["headers"] = h
+    return _orig_requests_get(url, **kwargs)
+
+_requests_module.get = _get_with_ua  # monkey-patch globale
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Import moduli dashboard  (solo funzioni pure, nessun avvio di app)
+# ─────────────────────────────────────────────────────────────────────────────
+
 import dash
-from dash import dcc, html, Input, Output
+from dash import dcc, html, Input, Output, clientside_callback
 import dash_bootstrap_components as dbc
 
-# ── Import funzioni pure da ciascun modulo (senza avviare le loro app) ───────
 from fiscal_flow_monitor import (
     load_data        as ff_load_data,
     chart_net_liq, chart_components, chart_weekly_delta,
@@ -78,44 +105,67 @@ from timmer_framework import (
 PORT = int(os.environ.get("PORT", 8050))
 
 C = {
-    "bg":          "#080c18",
-    "surface":     "#0d1117",
-    "border":      "#1a2236",
-    "text":        "#e2e8f0",
-    "muted":       "#556080",
-    "accent":      "#00d4ff",
+    "bg":      "#080c18",
+    "surface": "#0d1117",
+    "border":  "#1a2236",
+    "text":    "#e2e8f0",
+    "muted":   "#556080",
+    "accent":  "#00d4ff",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  CARICAMENTO DATI (una sola volta, condiviso tra tutti i tab)
+#  CARICAMENTO DATI IN BACKGROUND
+#  Il server si avvia immediatamente; i dati vengono caricati in parallelo.
+#  La pagina mostra uno schermo di caricamento finché non è tutto pronto.
 # ─────────────────────────────────────────────────────────────────────────────
 
-print("\n" + "─" * 60)
-print("  FIN ANALYTICS  ·  Hub  ·  Avvio...")
-print("─" * 60)
+_all_data: dict = {}
+_loading_done = threading.Event()
+_loading_error: list = []  # conterrà l'eccezione se il caricamento fallisce
 
-print("\n💧 Fiscal Flow Monitor...")
-_ff   = ff_load_data()
 
-print("\n⚡ Volatility Radar...")
-_vol  = vol_load_data()
+def _load_all_data():
+    try:
+        print("\n" + "─" * 60)
+        print("  FIN ANALYTICS  ·  Hub  ·  Caricamento dati in background...")
+        print("─" * 60)
 
-print("\n📈 Rates & Treasury...")
-_rt   = rt_load_data()
+        print("\n💧 Fiscal Flow Monitor...")
+        _all_data["ff"] = ff_load_data()
 
-print("\n🌊 Global Liquidity Index...")
-_gli  = gli_load_data()
+        print("\n⚡ Volatility Radar...")
+        _all_data["vol"] = vol_load_data()
 
-print("\n📊 Market Internals...")
-_mi   = mi_load_data()
+        print("\n📈 Rates & Treasury...")
+        _all_data["rt"] = rt_load_data()
 
-print("\n🎯 AGE Indicators...")
-_age  = age_load_data()
+        print("\n🌊 Global Liquidity Index...")
+        _all_data["gli"] = gli_load_data()
 
-print("\n📐 Timmer Framework...")
-_tmr  = tmr_load_data()
+        print("\n📊 Market Internals...")
+        _all_data["mi"] = mi_load_data()
 
-print("\n✅ Tutti i dati caricati\n" + "─" * 60 + "\n")
+        print("\n🎯 AGE Indicators...")
+        _all_data["age"] = age_load_data()
+
+        print("\n📐 Timmer Framework...")
+        _all_data["tmr"] = tmr_load_data()
+
+        print("\n✅ Tutti i dati caricati\n" + "─" * 60 + "\n")
+
+    except Exception as e:
+        _loading_error.append(str(e))
+        print(f"\n❌ Errore nel caricamento dati: {e}\n")
+        # Inizializza dati vuoti per ogni modulo mancante
+        for k in ["ff", "vol", "rt", "gli", "mi", "age", "tmr"]:
+            _all_data.setdefault(k, {})
+    finally:
+        _loading_done.set()
+
+
+# Avvia il caricamento in background — il server HTTP parte subito
+_loader_thread = threading.Thread(target=_load_all_data, daemon=True)
+_loader_thread.start()
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  APP
@@ -127,10 +177,10 @@ app = dash.Dash(
     title="FIN ANALYTICS · Dashboard Suite",
     suppress_callback_exceptions=True,
 )
-server = app.server   # per deploy WSGI se necessario
+server = app.server   # per deploy WSGI
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  STILE TAB  (replica stile FIN ANALYTICS)
+#  STILE TAB
 # ─────────────────────────────────────────────────────────────────────────────
 
 _TAB = {
@@ -155,105 +205,150 @@ _TAB_SEL = {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  LAYOUT
+#  HEADER COMUNE
 # ─────────────────────────────────────────────────────────────────────────────
 
-app.layout = html.Div([
-
-    # ── Intestazione globale ──────────────────────────────────────────────────
-    html.Div([
-        html.Span("◆ ", style={"color": C["accent"], "fontSize": "16px"}),
-        html.Span("FIN ANALYTICS", style={
-            "fontFamily": "monospace", "fontSize": "16px",
-            "fontWeight": "700", "color": C["accent"],
-            "letterSpacing": "0.08em",
-        }),
-        html.Span("  ·  Dashboard Suite  ·  Nicoletti 2026", style={
-            "fontFamily": "monospace", "fontSize": "11px",
-            "color": C["muted"], "marginLeft": "8px",
-        }),
-        html.Span("  ·  Local", style={
-            "fontFamily": "monospace", "fontSize": "10px",
-            "color": C["border"], "marginLeft": "4px",
-        }),
-    ], style={
-        "backgroundColor": C["surface"],
-        "borderBottom":    f"1px solid {C['border']}",
-        "padding":         "10px 28px",
-        "display":         "flex",
-        "alignItems":      "center",
+_HEADER = html.Div([
+    html.Span("◆ ", style={"color": C["accent"], "fontSize": "16px"}),
+    html.Span("FIN ANALYTICS", style={
+        "fontFamily": "monospace", "fontSize": "16px",
+        "fontWeight": "700", "color": C["accent"],
+        "letterSpacing": "0.08em",
     }),
+    html.Span("  ·  Dashboard Suite  ·  Nicoletti 2026", style={
+        "fontFamily": "monospace", "fontSize": "11px",
+        "color": C["muted"], "marginLeft": "8px",
+    }),
+    html.Span("  ·  Cloud", style={
+        "fontFamily": "monospace", "fontSize": "10px",
+        "color": C["border"], "marginLeft": "4px",
+    }),
+], style={
+    "backgroundColor": C["surface"],
+    "borderBottom":    f"1px solid {C['border']}",
+    "padding":         "10px 28px",
+    "display":         "flex",
+    "alignItems":      "center",
+})
 
-    # ── Tabs principali ───────────────────────────────────────────────────────
-    dcc.Tabs(
-        id="main-tabs",
-        value="fiscal-flow",
-        style={
-            "backgroundColor": C["bg"],
-            "borderBottom":    f"1px solid {C['border']}",
-            "paddingLeft":     "20px",
-        },
-        children=[
+# ─────────────────────────────────────────────────────────────────────────────
+#  LOADING SCREEN  (mostrato finché i dati non sono pronti)
+# ─────────────────────────────────────────────────────────────────────────────
 
-            # ── TAB 1: Fiscal Flow Monitor ────────────────────────────────────
-            dcc.Tab(
-                label="💧 Fiscal Flow",
-                value="fiscal-flow",
-                style=_TAB, selected_style=_TAB_SEL,
-                children=[ff_build_layout(_ff)],
+def _loading_screen():
+    return html.Div([
+        _HEADER,
+        html.Div([
+            html.Div("⏳", style={"fontSize": "48px", "marginBottom": "16px"}),
+            html.Div("Caricamento dati in corso...", style={
+                "fontFamily": "monospace", "fontSize": "16px",
+                "color": C["accent"], "fontWeight": "700",
+            }),
+            html.Div(
+                "Il server è attivo. I dati vengono scaricati in background "
+                "(FRED, yfinance, CFTC). La pagina si aggiornerà automaticamente.",
+                style={
+                    "fontFamily": "monospace", "fontSize": "11px",
+                    "color": C["muted"], "marginTop": "12px",
+                    "maxWidth": "500px", "textAlign": "center",
+                }
             ),
+            dcc.Interval(id="boot-interval", interval=4000, max_intervals=60),
+            html.Div(id="_boot_dummy", style={"display": "none"}),
+        ], style={
+            "display": "flex", "flexDirection": "column",
+            "alignItems": "center", "justifyContent": "center",
+            "minHeight": "80vh",
+        }),
+    ], style={"backgroundColor": C["bg"], "minHeight": "100vh"})
 
-            # ── TAB 2: Volatility Radar ───────────────────────────────────────
-            dcc.Tab(
-                label="⚡ Volatility",
-                value="volatility",
-                style=_TAB, selected_style=_TAB_SEL,
-                children=[vol_build_layout(_vol)],
-            ),
 
-            # ── TAB 3: Rates & Treasury ───────────────────────────────────────
-            dcc.Tab(
-                label="📈 Rates & Treasury",
-                value="rates",
-                style=_TAB, selected_style=_TAB_SEL,
-                children=[rt_build_layout(_rt)],
-            ),
+# ─────────────────────────────────────────────────────────────────────────────
+#  MAIN LAYOUT  (costruito una volta che i dati sono pronti)
+# ─────────────────────────────────────────────────────────────────────────────
 
-            # ── TAB 4: Global Liquidity Index ────────────────────────────────
-            dcc.Tab(
-                label="🌊 GLI",
-                value="gli",
-                style=_TAB, selected_style=_TAB_SEL,
-                children=[gli_build_layout(_gli)],
-            ),
+def _main_layout():
+    ff  = _all_data.get("ff",  {})
+    vol = _all_data.get("vol", {})
+    rt  = _all_data.get("rt",  {})
+    gli = _all_data.get("gli", {})
+    mi  = _all_data.get("mi",  {})
+    age = _all_data.get("age", {})
+    tmr = _all_data.get("tmr", {})
 
-            # ── TAB 5: Market Internals ───────────────────────────────────────
-            dcc.Tab(
-                label="📊 Market Internals",
-                value="market-internals",
-                style=_TAB, selected_style=_TAB_SEL,
-                children=[mi_build_layout(_mi)],
-            ),
+    return html.Div([
+        _HEADER,
+        dcc.Tabs(
+            id="main-tabs",
+            value="fiscal-flow",
+            style={
+                "backgroundColor": C["bg"],
+                "borderBottom":    f"1px solid {C['border']}",
+                "paddingLeft":     "20px",
+            },
+            children=[
+                dcc.Tab(label="💧 Fiscal Flow",      value="fiscal-flow",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[ff_build_layout(ff)]),
 
-            # ── TAB 6: AGE Indicators ─────────────────────────────────────────
-            dcc.Tab(
-                label="🎯 AGE Indicators",
-                value="age-indicators",
-                style=_TAB, selected_style=_TAB_SEL,
-                children=[age_build_layout(_age)],
-            ),
+                dcc.Tab(label="⚡ Volatility",       value="volatility",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[vol_build_layout(vol)]),
 
-            # ── TAB 7: Timmer Framework ───────────────────────────────────────
-            dcc.Tab(
-                label="📐 Timmer",
-                value="timmer",
-                style=_TAB, selected_style=_TAB_SEL,
-                children=[tmr_build_layout(_tmr)],
-            ),
-        ],
-    ),
+                dcc.Tab(label="📈 Rates & Treasury", value="rates",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[rt_build_layout(rt)]),
 
-], style={"backgroundColor": C["bg"], "minHeight": "100vh"})
+                dcc.Tab(label="🌊 GLI",              value="gli",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[gli_build_layout(gli)]),
+
+                dcc.Tab(label="📊 Market Internals", value="market-internals",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[mi_build_layout(mi)]),
+
+                dcc.Tab(label="🎯 AGE Indicators",  value="age-indicators",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[age_build_layout(age)]),
+
+                dcc.Tab(label="📐 Timmer",           value="timmer",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[tmr_build_layout(tmr)]),
+            ],
+        ),
+    ], style={"backgroundColor": C["bg"], "minHeight": "100vh"})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  serve_layout  — Dash chiama questa funzione ad ogni richiesta di pagina
+# ─────────────────────────────────────────────────────────────────────────────
+
+def serve_layout():
+    if not _loading_done.is_set():
+        return _loading_screen()
+    return _main_layout()
+
+
+app.layout = serve_layout
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  CLIENTSIDE CALLBACK  — ricarica la pagina ogni 4s durante il boot
+# ─────────────────────────────────────────────────────────────────────────────
+
+app.clientside_callback(
+    """
+    function(n) {
+        if (n && n > 0) {
+            window.location.reload();
+        }
+        return '';
+    }
+    """,
+    Output("_boot_dummy", "children"),
+    Input("boot-interval", "n_intervals"),
+    prevent_initial_call=True,
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -270,12 +365,13 @@ app.layout = html.Div([
     Input("weeks-bar",     "value"),
 )
 def ff_update(years, weeks):
+    ff = _all_data.get("ff", {})
     return (
-        chart_net_liq(_ff, years),
-        chart_components(_ff, years),
-        chart_weekly_delta(_ff, weeks),
-        chart_waterfall(_ff),
-        chart_zscore(_ff, years),
+        chart_net_liq(ff, years),
+        chart_components(ff, years),
+        chart_weekly_delta(ff, weeks),
+        chart_waterfall(ff),
+        chart_zscore(ff, years),
     )
 
 
@@ -293,13 +389,14 @@ def ff_update(years, weeks):
     Input("vol-lookback",   "value"),
 )
 def vol_update(years):
+    vol = _all_data.get("vol", {})
     return (
-        chart_vix_history(_vol, years),
-        chart_term_structure(_vol, years),
-        chart_vvix(_vol, years),
-        chart_move(_vol, years),
-        chart_percentile_gauge(_vol),
-        chart_zscore_combined(_vol, years),
+        chart_vix_history(vol, years),
+        chart_term_structure(vol, years),
+        chart_vvix(vol, years),
+        chart_move(vol, years),
+        chart_percentile_gauge(vol),
+        chart_zscore_combined(vol, years),
     )
 
 
@@ -318,13 +415,14 @@ def vol_update(years):
     Input("rt-heatmap-sid","value"),
 )
 def rt_update(years, heatmap_sid):
+    rt = _all_data.get("rt", {})
     return (
-        chart_yield_curve_snapshot(_rt),
-        chart_yield_history(_rt, years),
-        chart_spread(_rt, years),
-        chart_yield_heatmap(_rt, heatmap_sid),
-        chart_breakeven(_rt, years),
-        chart_real_yield(_rt, years),
+        chart_yield_curve_snapshot(rt),
+        chart_yield_history(rt, years),
+        chart_spread(rt, years),
+        chart_yield_heatmap(rt, heatmap_sid),
+        chart_breakeven(rt, years),
+        chart_real_yield(rt, years),
     )
 
 
@@ -343,13 +441,14 @@ def rt_update(years, heatmap_sid):
     Input("gli-market",      "value"),
 )
 def gli_update(years, market_key):
+    gli = _all_data.get("gli", {})
     return (
-        chart_gli_score(_gli, years),
-        chart_cb_levels(_gli, years),
-        chart_cb_yoy(_gli, years),
-        chart_gli_vs_market(_gli, market_key, years),
-        chart_phase_donut(_gli),
-        chart_rolling_correlation(_gli, years),
+        chart_gli_score(gli, years),
+        chart_cb_levels(gli, years),
+        chart_cb_yoy(gli, years),
+        chart_gli_vs_market(gli, market_key, years),
+        chart_phase_donut(gli),
+        chart_rolling_correlation(gli, years),
     )
 
 
@@ -368,14 +467,15 @@ def gli_update(years, market_key):
     Input("mi-lookback",       "value"),
 )
 def mi_update(years):
+    mi = _all_data.get("mi", {})
     return (
-        chart_breadth_ma(_mi, years),
-        chart_ad_line(_mi, years),
-        chart_nh_nl(_mi, years),
-        chart_put_call(_mi, years),
-        chart_buffett(_mi, years),
-        chart_hindenburg_detail(_mi),
-        chart_spx_price(_mi, years),
+        chart_breadth_ma(mi, years),
+        chart_ad_line(mi, years),
+        chart_nh_nl(mi, years),
+        chart_put_call(mi, years),
+        chart_buffett(mi, years),
+        chart_hindenburg_detail(mi),
+        chart_spx_price(mi, years),
     )
 
 
@@ -393,19 +493,16 @@ def mi_update(years):
     Input("age-lookback",           "value"),
 )
 def age_update(years):
+    age = _all_data.get("age", {})
     return (
-        chart_trin(_age, years),
-        chart_seasonality_monthly(_age),
-        chart_seasonality_annual(_age),
-        chart_cot(_age, years),
-        chart_fear_greed_gauge(_age),
-        chart_fear_greed_components(_age),
+        chart_trin(age, years),
+        chart_seasonality_monthly(age),
+        chart_seasonality_annual(age),
+        chart_cot(age, years),
+        chart_fear_greed_gauge(age),
+        chart_fear_greed_components(age),
     )
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  ENTRY POINT
-# ─────────────────────────────────────────────────────────────────────────────
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  CALLBACKS  —  Timmer Framework
@@ -425,7 +522,8 @@ def age_update(years):
     Input("tmr-corr-window",     "value"),
 )
 def tmr_update(years, window):
-    return _tmr_charts(_tmr, years, window)
+    tmr = _all_data.get("tmr", {})
+    return _tmr_charts(tmr, years, window)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
