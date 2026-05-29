@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║  FIN ANALYTICS  ·  AGE Indicators  ·  Nicoletti 2026                ║
+║  FIN ANALYTICS  ·  AGE Indicators  ·  APA Quant                ║
 ║  Ispirato a AGE Italia / Gaetano Evangelista                        ║
 ║                                                                      ║
 ║  TRIN (Arms Index)   ·  Stagionalità S&P 500                        ║

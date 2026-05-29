@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║  GLOBAL LIQUIDITY INDEX  ·  FIN ANALYTICS Suite  ·  Nicoletti 2026  ║
+║  GLOBAL LIQUIDITY INDEX  ·  FIN ANALYTICS Suite  ·  APA Quant  ║
 ║  Fed · ECB · BOJ · BOE · PBOC  ≈ 85% del GLI globale               ║
 ║  Score 0-100 · Fasi ciclo · Lead/Lag vs azionario/bond/crypto       ║
 ║  Dati: FRED API (pubblico)                                           ║
@@ -791,7 +791,7 @@ def build_app_layout(data: dict) -> html.Div:
             html.Div(
                 "⚠️  Global Liquidity Index  ·  Stima costruita su proxy FRED  ·  "
                 "BOJ/BOE/PBOC = serie approssimate  ·  Non costituisce consulenza finanziaria  ·  "
-                "FIN ANALYTICS  ·  Nicoletti 2026",
+                "FIN ANALYTICS  ·  APA Quant",
                 className="footer"
             ),
         ], className="page-wrap"),

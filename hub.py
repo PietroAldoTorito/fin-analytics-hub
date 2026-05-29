@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║  FIN ANALYTICS  ·  Dashboard Hub  ·  Nicoletti 2026                 ║
+║  FIN ANALYTICS  ·  Dashboard Hub  ·  APA Quant                 ║
 ║  Tutti i dashboard su un unico URL con navigazione a tab            ║
 ║                                                                      ║
 ║  Tab:  💧 Fiscal Flow  ·  ⚡ Volatility  ·  📈 Rates  ·  🌊 GLI    ║
@@ -174,7 +174,7 @@ _loader_thread.start()
 app = dash.Dash(
     __name__,
     external_stylesheets=[dbc.themes.CYBORG],
-    title="FIN ANALYTICS · Dashboard Suite",
+    title="FIN ANALYTICS · APA Quant",
     suppress_callback_exceptions=True,
 )
 server = app.server   # per deploy WSGI
@@ -189,10 +189,11 @@ _TAB = {
     "border":           f"1px solid {C['border']}",
     "borderBottom":     "none",
     "fontFamily":       "monospace",
-    "fontSize":         "12px",
+    "fontSize":         "11px",
     "fontWeight":       "600",
-    "letterSpacing":    "0.05em",
-    "padding":          "10px 20px",
+    "letterSpacing":    "0.03em",
+    "padding":          "9px 14px",
+    "whiteSpace":       "nowrap",
 }
 _TAB_SEL = {
     **_TAB,
@@ -215,13 +216,9 @@ _HEADER = html.Div([
         "fontWeight": "700", "color": C["accent"],
         "letterSpacing": "0.08em",
     }),
-    html.Span("  ·  Dashboard Suite  ·  Nicoletti 2026", style={
+    html.Span("  ·  Dashboard Suite  ·  APA Quant", style={
         "fontFamily": "monospace", "fontSize": "11px",
         "color": C["muted"], "marginLeft": "8px",
-    }),
-    html.Span("  ·  Cloud", style={
-        "fontFamily": "monospace", "fontSize": "10px",
-        "color": C["border"], "marginLeft": "4px",
     }),
 ], style={
     "backgroundColor": C["surface"],
@@ -284,7 +281,11 @@ def _main_layout():
             style={
                 "backgroundColor": C["bg"],
                 "borderBottom":    f"1px solid {C['border']}",
-                "paddingLeft":     "20px",
+                "paddingLeft":     "12px",
+                "overflowX":       "auto",
+                "overflowY":       "hidden",
+                "display":         "flex",
+                "flexWrap":        "nowrap",
             },
             children=[
                 dcc.Tab(label="💧 Fiscal Flow",      value="fiscal-flow",

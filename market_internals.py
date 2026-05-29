@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║  FIN ANALYTICS  ·  Market Internals  ·  Nicoletti 2026              ║
+║  FIN ANALYTICS  ·  Market Internals  ·  APA Quant              ║
 ║  Breadth · Sentiment · Valuation · S&P 500 & Nasdaq                 ║
 ║                                                                      ║
 ║  Indicatori:  %>200MA · %>50MA · A/D Line · McClellan               ║

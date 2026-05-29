@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║  RATES & TREASURY  ·  FIN ANALYTICS Suite  ·  Nicoletti 2026        ║
+║  RATES & TREASURY  ·  FIN ANALYTICS Suite  ·  APA Quant        ║
 ║  Curva dei rendimenti USA · Spread · Regime tassi · Fed Funds        ║
 ║  Dati: FRED API (pubblico, senza API key)                            ║
 ║  Port: 8054                                                          ║
@@ -603,7 +603,7 @@ def build_app_layout(data: dict) -> html.Div:
 
             html.Div(
                 "⚠️  Rates & Treasury  ·  Dati: FRED (US Treasury, Federal Reserve)  ·  "
-                "Non costituisce consulenza finanziaria  ·  FIN ANALYTICS  ·  Nicoletti 2026",
+                "Non costituisce consulenza finanziaria  ·  FIN ANALYTICS  ·  APA Quant",
                 className="footer"
             ),
         ], className="page-wrap"),

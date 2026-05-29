@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║  FIN ANALYTICS  ·  Timmer Framework  ·  Nicoletti 2026              ║
+║  FIN ANALYTICS  ·  Timmer Framework  ·  APA Quant              ║
 ║  Ispirato all'analisi settimanale di Jurrien Timmer (Fidelity)       ║
 ║                                                                      ║
 ║  Indicatori:                                                         ║

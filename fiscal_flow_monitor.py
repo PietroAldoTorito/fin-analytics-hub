@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║  FISCAL FLOW MONITOR  ·  FIN ANALYTICS Suite  ·  Nicoletti 2026     ║
+║  FISCAL FLOW MONITOR  ·  FIN ANALYTICS Suite  ·  APA Quant     ║
 ║  Net Liquidity = Fed Balance Sheet − TGA − Reverse Repo              ║
 ║  Data source: FRED API (public CSV, no key required)                 ║
 ║  Cache: DuckDB local  ·  Port: 8052                                  ║
@@ -549,7 +549,7 @@ def build_app_layout(df: pd.DataFrame) -> html.Div:
             # ── Footer ───────────────────────────────────────────────────
             html.Div(
                 "⚠️  Fiscal Flow Monitor  ·  Net Liquidity = Fed Balance Sheet − TGA − RRP  ·  "
-                "Non costituisce consulenza finanziaria  ·  FIN ANALYTICS  ·  Nicoletti 2026",
+                "Non costituisce consulenza finanziaria  ·  FIN ANALYTICS  ·  APA Quant",
                 className="footer"
             ),
         ], className="page-wrap"),

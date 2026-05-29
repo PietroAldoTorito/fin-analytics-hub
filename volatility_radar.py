@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════════════════╗
-║  VOLATILITY RADAR  ·  FIN ANALYTICS Suite  ·  Nicoletti 2026        ║
+║  VOLATILITY RADAR  ·  FIN ANALYTICS Suite  ·  APA Quant        ║
 ║  VIX · VIX 3M (VXMT) · VVIX · MOVE Index                           ║
 ║  Regime di rischio · Term Structure · Percentile storico             ║
 ║  Data: yfinance (VIX/VXMT/VVIX) + FRED (MOVE via ICE proxy)        ║
@@ -661,7 +661,7 @@ def build_app_layout(data: dict) -> html.Div:
             # Footer
             html.Div(
                 "⚠️  Volatility Radar  ·  VIX/VVIX/VXV: CBOE via Yahoo Finance  ·  "
-                "Non costituisce consulenza finanziaria  ·  FIN ANALYTICS  ·  Nicoletti 2026",
+                "Non costituisce consulenza finanziaria  ·  FIN ANALYTICS  ·  APA Quant",
                 className="footer"
             ),
         ], className="page-wrap"),
