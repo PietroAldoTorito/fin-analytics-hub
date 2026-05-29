@@ -245,57 +245,77 @@ _HEADER = html.Div([
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  LAYOUT PRINCIPALE  — sempre visibile, i grafici si aggiornano via callback
+#  LAYOUT PRINCIPALE  — serve_layout è callable → Dash la chiama ad ogni request
+#  In questo modo build_layout viene chiamata CON i dati reali (non vuoti)
 # ─────────────────────────────────────────────────────────────────────────────
 
-app.layout = html.Div([
-    _HEADER,
-    # Interval che rilancia tutti i callback ogni 10s per 3 minuti
-    # (permette ai grafici di aggiornarsi mentre i dati vengono caricati)
-    dcc.Interval(id="hub-refresh", interval=10_000, max_intervals=18),
-    dcc.Tabs(
-        id="main-tabs",
-        value="fiscal-flow",
-        style={
-            "backgroundColor": C["bg"],
-            "borderBottom":    f"1px solid {C['border']}",
-            "paddingLeft":     "12px",
-            "overflowX":       "auto",
-            "overflowY":       "hidden",
-            "display":         "flex",
-            "flexWrap":        "nowrap",
-        },
-        children=[
-            dcc.Tab(label="💧 Fiscal Flow",      value="fiscal-flow",
-                    style=_TAB, selected_style=_TAB_SEL,
-                    children=[ff_build_layout({})]),
+_LOADING_TAB = html.Div(
+    "⏳ Dati in caricamento...",
+    style={"color": C["muted"], "padding": "60px 40px",
+           "fontFamily": "monospace", "fontSize": "13px"}
+)
 
-            dcc.Tab(label="⚡ Volatility",       value="volatility",
-                    style=_TAB, selected_style=_TAB_SEL,
-                    children=[vol_build_layout({})]),
 
-            dcc.Tab(label="📈 Rates & Treasury", value="rates",
-                    style=_TAB, selected_style=_TAB_SEL,
-                    children=[rt_build_layout({})]),
+def _safe(fn, data):
+    """Chiama fn(data) — se fallisce (dati non ancora pronti) mostra placeholder."""
+    try:
+        return fn(data)
+    except Exception:
+        return _LOADING_TAB
 
-            dcc.Tab(label="🌊 GLI",              value="gli",
-                    style=_TAB, selected_style=_TAB_SEL,
-                    children=[gli_build_layout({})]),
 
-            dcc.Tab(label="📊 Market Internals", value="market-internals",
-                    style=_TAB, selected_style=_TAB_SEL,
-                    children=[mi_build_layout({})]),
+def serve_layout():
+    ff  = _all_data.get("ff",  {})
+    vol = _all_data.get("vol", {})
+    rt  = _all_data.get("rt",  {})
+    gli = _all_data.get("gli", {})
+    mi  = _all_data.get("mi",  {})
+    age = _all_data.get("age", {})
+    tmr = _all_data.get("tmr", {})
 
-            dcc.Tab(label="🎯 AGE Indicators",  value="age-indicators",
-                    style=_TAB, selected_style=_TAB_SEL,
-                    children=[age_build_layout({})]),
+    return html.Div([
+        _HEADER,
+        dcc.Interval(id="hub-refresh", interval=10_000, max_intervals=18),
+        dcc.Tabs(
+            id="main-tabs",
+            value="fiscal-flow",
+            style={
+                "backgroundColor": C["bg"],
+                "borderBottom":    f"1px solid {C['border']}",
+                "paddingLeft":     "12px",
+                "overflowX":       "auto",
+                "overflowY":       "hidden",
+                "display":         "flex",
+                "flexWrap":        "nowrap",
+            },
+            children=[
+                dcc.Tab(label="💧 Fiscal Flow",      value="fiscal-flow",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[_safe(ff_build_layout, ff)]),
+                dcc.Tab(label="⚡ Volatility",       value="volatility",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[_safe(vol_build_layout, vol)]),
+                dcc.Tab(label="📈 Rates & Treasury", value="rates",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[_safe(rt_build_layout, rt)]),
+                dcc.Tab(label="🌊 GLI",              value="gli",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[_safe(gli_build_layout, gli)]),
+                dcc.Tab(label="📊 Market Internals", value="market-internals",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[_safe(mi_build_layout, mi)]),
+                dcc.Tab(label="🎯 AGE Indicators",  value="age-indicators",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[_safe(age_build_layout, age)]),
+                dcc.Tab(label="📐 Timmer",           value="timmer",
+                        style=_TAB, selected_style=_TAB_SEL,
+                        children=[_safe(tmr_build_layout, tmr)]),
+            ],
+        ),
+    ], style={"backgroundColor": C["bg"], "minHeight": "100vh"})
 
-            dcc.Tab(label="📐 Timmer",           value="timmer",
-                    style=_TAB, selected_style=_TAB_SEL,
-                    children=[tmr_build_layout({})]),
-        ],
-    ),
-], style={"backgroundColor": C["bg"], "minHeight": "100vh"})
+
+app.layout = serve_layout  # callable → Dash chiama serve_layout() ad ogni request
 
 
 # ─────────────────────────────────────────────────────────────────────────────
