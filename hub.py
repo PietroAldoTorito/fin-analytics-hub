@@ -16,6 +16,7 @@ Avvio:
 import sys
 import os
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -37,6 +38,9 @@ def _get_with_ua(url, **kwargs):
     h = kwargs.get("headers") or {}
     h.setdefault("User-Agent", _UA)
     kwargs["headers"] = h
+    # Cap timeout a 8s per evitare hang su FRED / cloud
+    if kwargs.get("timeout", 999) > 8:
+        kwargs["timeout"] = 8
     return _orig_requests_get(url, **kwargs)
 
 _requests_module.get = _get_with_ua  # monkey-patch globale
@@ -125,42 +129,39 @@ _loading_error: list = []  # conterrà l'eccezione se il caricamento fallisce
 
 
 def _load_all_data():
-    try:
-        print("\n" + "─" * 60)
-        print("  FIN ANALYTICS  ·  Hub  ·  Caricamento dati in background...")
-        print("─" * 60)
+    print("\n" + "─" * 60)
+    print("  FIN ANALYTICS  ·  Hub  ·  Caricamento parallelo in background...")
+    print("─" * 60)
 
-        print("\n💧 Fiscal Flow Monitor...")
-        _all_data["ff"] = ff_load_data()
+    loaders = {
+        "ff":  ("💧 Fiscal Flow Monitor",   ff_load_data),
+        "vol": ("⚡ Volatility Radar",       vol_load_data),
+        "rt":  ("📈 Rates & Treasury",       rt_load_data),
+        "gli": ("🌊 Global Liquidity Index", gli_load_data),
+        "mi":  ("📊 Market Internals",       mi_load_data),
+        "age": ("🎯 AGE Indicators",         age_load_data),
+        "tmr": ("📐 Timmer Framework",       tmr_load_data),
+    }
 
-        print("\n⚡ Volatility Radar...")
-        _all_data["vol"] = vol_load_data()
+    with ThreadPoolExecutor(max_workers=7) as executor:
+        futures = {executor.submit(fn): (key, label)
+                   for key, (label, fn) in loaders.items()}
+        for future in as_completed(futures, timeout=120):
+            key, label = futures[future]
+            try:
+                _all_data[key] = future.result()
+                print(f"  ✓ {label}")
+            except Exception as e:
+                print(f"  ✗ {label}: {e}")
+                _loading_error.append(f"{key}: {e}")
+                _all_data[key] = {}
 
-        print("\n📈 Rates & Treasury...")
-        _all_data["rt"] = rt_load_data()
+    # Garantisci che tutte le chiavi esistano (sicurezza)
+    for k in loaders:
+        _all_data.setdefault(k, {})
 
-        print("\n🌊 Global Liquidity Index...")
-        _all_data["gli"] = gli_load_data()
-
-        print("\n📊 Market Internals...")
-        _all_data["mi"] = mi_load_data()
-
-        print("\n🎯 AGE Indicators...")
-        _all_data["age"] = age_load_data()
-
-        print("\n📐 Timmer Framework...")
-        _all_data["tmr"] = tmr_load_data()
-
-        print("\n✅ Tutti i dati caricati\n" + "─" * 60 + "\n")
-
-    except Exception as e:
-        _loading_error.append(str(e))
-        print(f"\n❌ Errore nel caricamento dati: {e}\n")
-        # Inizializza dati vuoti per ogni modulo mancante
-        for k in ["ff", "vol", "rt", "gli", "mi", "age", "tmr"]:
-            _all_data.setdefault(k, {})
-    finally:
-        _loading_done.set()
+    print("\n✅ Tutti i dati caricati\n" + "─" * 60 + "\n")
+    _loading_done.set()
 
 
 # Avvia il caricamento in background — il server HTTP parte subito
