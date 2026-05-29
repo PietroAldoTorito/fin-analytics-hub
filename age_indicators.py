@@ -1135,7 +1135,7 @@ def build_app_layout(d):
         # ── Sub-header ────────────────────────────────────────────────────────
         html.Div([
             html.Span("◆ ", style={"color": C["accent"]}),
-            html.Span("AGE INDICATORS", style={"fontFamily": "monospace", "fontSize": "13px",
+            html.Span("SENTIMENT", style={"fontFamily": "monospace", "fontSize": "13px",
                                                "fontWeight": "700", "color": C["accent"],
                                                "letterSpacing": "0.08em"}),
             html.Span("  ·  TRIN · Stagionalità · CoT · Fear & Greed", style={

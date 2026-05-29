@@ -275,7 +275,7 @@ def serve_layout():
 
     return html.Div([
         _HEADER,
-        dcc.Interval(id="hub-refresh", interval=10_000, max_intervals=18),
+        dcc.Interval(id="hub-refresh", interval=15_000, max_intervals=-1),
         dcc.Tabs(
             id="main-tabs",
             value="fiscal-flow",
@@ -491,4 +491,19 @@ def age_update(years, _n):
     Output("g-tmr-cape",         "figure"),
     Output("g-tmr-margins",      "figure"),
     Output("tmr-alert-log",      "children"),
-    Input("tmr-lookb
+    Input("tmr-lookback",        "value"),
+    Input("tmr-corr-window",     "value"),
+    Input("hub-refresh",         "n_intervals"),
+)
+def tmr_update(years, window, _n):
+    tmr = _all_data.get("tmr", {})
+    return _tmr_charts(tmr, years, window)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  ENTRY POINT
+# ─────────────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    print(f"🚀  FIN ANALYTICS Hub  →  http://localhost:{PORT}\n")
+    app.run(debug=False, port=PORT, host="0.0.0.0")

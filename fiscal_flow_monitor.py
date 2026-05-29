@@ -435,8 +435,14 @@ def _regime_card(row: pd.Series) -> html.Div:
     ], className="kpi-card", style={"borderLeftColor": col})
 
 
-def build_kpi_row(df: pd.DataFrame) -> html.Div:
-    last = df.dropna(subset=["d_net", "zscore"]).iloc[-1]
+def build_kpi_row(df) -> html.Div:
+    import pandas as _pd
+    if not isinstance(df, _pd.DataFrame) or df.empty:
+        return html.Div("⏳ KPI in caricamento...", style={"padding": "16px", "color": "#556080", "fontFamily": "monospace"})
+    try:
+        last = df.dropna(subset=["d_net", "zscore"]).iloc[-1]
+    except IndexError:
+        return html.Div("⏳ KPI in caricamento...", style={"padding": "16px", "color": "#556080", "fontFamily": "monospace"})
     return html.Div([
         _kpi("NET LIQUIDITY",
              f"${last['net']:,.0f}B",
@@ -462,9 +468,15 @@ def build_kpi_row(df: pd.DataFrame) -> html.Div:
 #  LAYOUT
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_app_layout(df: pd.DataFrame) -> html.Div:
-    last      = df.dropna(subset=["d_net"]).iloc[-1]
-    last_date = last["date"].strftime("%d %b %Y")
+def build_app_layout(df) -> html.Div:
+    import pandas as _pd
+    if not isinstance(df, _pd.DataFrame) or df.empty:
+        df = _pd.DataFrame(columns=["date","net","fed","tga","rrp","d_net","d_fed","zscore"])
+    try:
+        last      = df.dropna(subset=["d_net"]).iloc[-1]
+        last_date = last["date"].strftime("%d %b %Y") if hasattr(last.get("date",""), "strftime") else "—"
+    except (IndexError, KeyError):
+        last_date = "—"
 
     return html.Div([
         html.Div([
