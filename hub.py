@@ -491,19 +491,4 @@ def age_update(years, _n):
     Output("g-tmr-cape",         "figure"),
     Output("g-tmr-margins",      "figure"),
     Output("tmr-alert-log",      "children"),
-    Input("tmr-lookback",        "value"),
-    Input("tmr-corr-window",     "value"),
-    Input("hub-refresh",         "n_intervals"),
-)
-def tmr_update(years, window, _n):
-    tmr = _all_data.get("tmr", {})
-    return _tmr_charts(tmr, years, window)
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  ENTRY POINT
-# ─────────────────────────────────────────────────────────────────────────────
-
-if __name__ == "__main__":
-    print(f"🚀  FIN ANALYTICS Hub  →  http://localhost:{PORT}\n")
-    app.run(debug=False, port=PORT, host="0.0.0.0")
+    Input("tmr-lookb
