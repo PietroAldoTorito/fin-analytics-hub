@@ -5,6 +5,7 @@
 ║  Tutti i dashboard su un unico URL con navigazione a tab            ║
 ║                                                                      ║
 ║  Tab:  💧 Fiscal Flow  ·  ⚡ Volatility  ·  📈 Rates  ·  🌊 GLI    ║
+║        📊 Market Internals  ·  🎯 AGE  ·  📐 Timmer               ║
 ║  Port: 8050                                                          ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
@@ -49,6 +50,26 @@ from global_liquidity_index import (
     build_kpi_row    as gli_build_kpi_row,
     build_app_layout as gli_build_layout,
 )
+from market_internals import (
+    load_data        as mi_load_data,
+    chart_breadth_ma, chart_ad_line, chart_nh_nl,
+    chart_put_call, chart_buffett, chart_hindenburg_detail, chart_spx_price,
+    build_kpi_row    as mi_build_kpi_row,
+    build_app_layout as mi_build_layout,
+)
+from age_indicators import (
+    load_data            as age_load_data,
+    chart_trin, chart_seasonality_monthly, chart_seasonality_annual,
+    chart_cot, chart_fear_greed_gauge, chart_fear_greed_components,
+    build_kpi_row        as age_build_kpi_row,
+    build_app_layout     as age_build_layout,
+)
+from timmer_framework import (
+    load_data            as tmr_load_data,
+    _tmr_charts,
+    build_kpi_row        as tmr_build_kpi_row,
+    build_app_layout     as tmr_build_layout,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  CONFIG
@@ -84,6 +105,15 @@ _rt   = rt_load_data()
 
 print("\n🌊 Global Liquidity Index...")
 _gli  = gli_load_data()
+
+print("\n📊 Market Internals...")
+_mi   = mi_load_data()
+
+print("\n🎯 AGE Indicators...")
+_age  = age_load_data()
+
+print("\n📐 Timmer Framework...")
+_tmr  = tmr_load_data()
 
 print("\n✅ Tutti i dati caricati\n" + "─" * 60 + "\n")
 
@@ -196,6 +226,30 @@ app.layout = html.Div([
                 style=_TAB, selected_style=_TAB_SEL,
                 children=[gli_build_layout(_gli)],
             ),
+
+            # ── TAB 5: Market Internals ───────────────────────────────────────
+            dcc.Tab(
+                label="📊 Market Internals",
+                value="market-internals",
+                style=_TAB, selected_style=_TAB_SEL,
+                children=[mi_build_layout(_mi)],
+            ),
+
+            # ── TAB 6: AGE Indicators ─────────────────────────────────────────
+            dcc.Tab(
+                label="🎯 AGE Indicators",
+                value="age-indicators",
+                style=_TAB, selected_style=_TAB_SEL,
+                children=[age_build_layout(_age)],
+            ),
+
+            # ── TAB 7: Timmer Framework ───────────────────────────────────────
+            dcc.Tab(
+                label="📐 Timmer",
+                value="timmer",
+                style=_TAB, selected_style=_TAB_SEL,
+                children=[tmr_build_layout(_tmr)],
+            ),
         ],
     ),
 
@@ -297,6 +351,81 @@ def gli_update(years, market_key):
         chart_phase_donut(_gli),
         chart_rolling_correlation(_gli, years),
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  CALLBACKS  —  Market Internals
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.callback(
+    Output("g-mi-breadth-ma",  "figure"),
+    Output("g-mi-ad-line",     "figure"),
+    Output("g-mi-nh-nl",       "figure"),
+    Output("g-mi-put-call",    "figure"),
+    Output("g-mi-buffett",     "figure"),
+    Output("g-mi-hindenburg",  "figure"),
+    Output("g-mi-spx",         "figure"),
+    Input("mi-lookback",       "value"),
+)
+def mi_update(years):
+    return (
+        chart_breadth_ma(_mi, years),
+        chart_ad_line(_mi, years),
+        chart_nh_nl(_mi, years),
+        chart_put_call(_mi, years),
+        chart_buffett(_mi, years),
+        chart_hindenburg_detail(_mi),
+        chart_spx_price(_mi, years),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  CALLBACKS  —  AGE Indicators
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.callback(
+    Output("g-age-trin",            "figure"),
+    Output("g-age-season-monthly",  "figure"),
+    Output("g-age-season-annual",   "figure"),
+    Output("g-age-cot",             "figure"),
+    Output("g-age-fg-gauge",        "figure"),
+    Output("g-age-fg-components",   "figure"),
+    Input("age-lookback",           "value"),
+)
+def age_update(years):
+    return (
+        chart_trin(_age, years),
+        chart_seasonality_monthly(_age),
+        chart_seasonality_annual(_age),
+        chart_cot(_age, years),
+        chart_fear_greed_gauge(_age),
+        chart_fear_greed_components(_age),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  ENTRY POINT
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  CALLBACKS  —  Timmer Framework
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.callback(
+    Output("g-tmr-leaderboard",  "figure"),
+    Output("g-tmr-corr-heatmap", "figure"),
+    Output("g-tmr-cap-equal",    "figure"),
+    Output("g-tmr-sb-corr",      "figure"),
+    Output("g-tmr-breadth",      "figure"),
+    Output("g-tmr-erp",          "figure"),
+    Output("g-tmr-cape",         "figure"),
+    Output("g-tmr-margins",      "figure"),
+    Output("tmr-alert-log",      "children"),
+    Input("tmr-lookback",        "value"),
+    Input("tmr-corr-window",     "value"),
+)
+def tmr_update(years, window):
+    return _tmr_charts(_tmr, years, window)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
