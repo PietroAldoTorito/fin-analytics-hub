@@ -184,6 +184,17 @@ def _load_all_data():
 _loader_thread = threading.Thread(target=_load_all_data, daemon=True)
 _loader_thread.start()
 
+# Watchdog: dopo 80s forza lo sblocco del layout qualunque cosa succeda
+def _watchdog():
+    _loading_done.wait(timeout=80)
+    if not _loading_done.is_set():
+        print("⚠️  Watchdog: timeout 80s — sblocco forzato")
+        for k in ["ff", "vol", "rt", "gli", "mi", "age", "tmr"]:
+            _all_data.setdefault(k, {})
+        _loading_done.set()
+
+threading.Thread(target=_watchdog, daemon=True).start()
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  APP
 # ─────────────────────────────────────────────────────────────────────────────
