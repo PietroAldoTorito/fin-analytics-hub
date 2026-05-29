@@ -16,9 +16,15 @@ Avvio:
 import sys
 import os
 import threading
+import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  TIMEOUT GLOBALE — copre yfinance, urllib, requests e qualsiasi socket
+# ─────────────────────────────────────────────────────────────────────────────
+socket.setdefaulttimeout(12)
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  PATCH requests.get — aggiunge User-Agent prima di qualsiasi import
@@ -33,17 +39,24 @@ _UA = (
     "Chrome/124.0.0.0 Safari/537.36"
 )
 _orig_requests_get = _requests_module.get
+_orig_session_get  = _requests_module.Session.get
 
 def _get_with_ua(url, **kwargs):
     h = kwargs.get("headers") or {}
     h.setdefault("User-Agent", _UA)
     kwargs["headers"] = h
-    # Cap timeout a 8s per evitare hang su FRED / cloud
-    if kwargs.get("timeout", 999) > 8:
-        kwargs["timeout"] = 8
+    kwargs.setdefault("timeout", 10)
     return _orig_requests_get(url, **kwargs)
 
-_requests_module.get = _get_with_ua  # monkey-patch globale
+def _session_get_with_ua(self, url, **kwargs):
+    h = kwargs.get("headers") or {}
+    h.setdefault("User-Agent", _UA)
+    kwargs["headers"] = h
+    kwargs.setdefault("timeout", 10)
+    return _orig_session_get(self, url, **kwargs)
+
+_requests_module.get        = _get_with_ua        # monkey-patch globale
+_requests_module.Session.get = _session_get_with_ua  # copre yfinance
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Import moduli dashboard  (solo funzioni pure, nessun avvio di app)
@@ -143,25 +156,28 @@ def _load_all_data():
         "tmr": ("📐 Timmer Framework",       tmr_load_data),
     }
 
-    with ThreadPoolExecutor(max_workers=7) as executor:
-        futures = {executor.submit(fn): (key, label)
-                   for key, (label, fn) in loaders.items()}
-        for future in as_completed(futures, timeout=120):
-            key, label = futures[future]
-            try:
-                _all_data[key] = future.result()
-                print(f"  ✓ {label}")
-            except Exception as e:
-                print(f"  ✗ {label}: {e}")
-                _loading_error.append(f"{key}: {e}")
-                _all_data[key] = {}
-
-    # Garantisci che tutte le chiavi esistano (sicurezza)
-    for k in loaders:
-        _all_data.setdefault(k, {})
-
-    print("\n✅ Tutti i dati caricati\n" + "─" * 60 + "\n")
-    _loading_done.set()
+    try:
+        with ThreadPoolExecutor(max_workers=7) as executor:
+            futures = {executor.submit(fn): (key, label)
+                       for key, (label, fn) in loaders.items()}
+            for future in as_completed(futures, timeout=90):
+                key, label = futures[future]
+                try:
+                    _all_data[key] = future.result(timeout=30)
+                    print(f"  ✓ {label}")
+                except Exception as e:
+                    print(f"  ✗ {label}: {e}")
+                    _loading_error.append(f"{key}: {e}")
+                    _all_data[key] = {}
+    except Exception as e:
+        print(f"\n❌ Errore executor: {e}")
+        _loading_error.append(str(e))
+    finally:
+        # Garantisci chiavi + sblocca layout — SEMPRE eseguito
+        for k in loaders:
+            _all_data.setdefault(k, {})
+        print("\n✅ Caricamento completato\n" + "─" * 60 + "\n")
+        _loading_done.set()
 
 
 # Avvia il caricamento in background — il server HTTP parte subito
