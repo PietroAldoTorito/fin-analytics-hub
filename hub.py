@@ -188,6 +188,7 @@ C = {
 
 _all_data: dict = {}
 _loading_error: list = []
+_loading_done = threading.Event()
 
 
 def _load_all_data():
@@ -222,11 +223,21 @@ def _load_all_data():
         print(f"\n❌ Errore executor: {e}")
         _loading_error.append(str(e))
     finally:
-        # Garantisci chiavi + sblocca layout — SEMPRE eseguito
         for k in loaders:
             _all_data.setdefault(k, {})
         print("\n✅ Caricamento completato\n" + "─" * 60 + "\n")
+        _loading_done.set()  # SEMPRE eseguito
 
+
+# Watchdog: sblocca il layout dopo 120s comunque vada
+def _watchdog():
+    if not _loading_done.wait(timeout=120):
+        print("⚠️  Watchdog: forzo sblocco dopo 120s")
+        for k in ["ff", "vol", "rt", "gli", "mi", "age", "tmr"]:
+            _all_data.setdefault(k, {})
+        _loading_done.set()
+
+threading.Thread(target=_watchdog, daemon=True).start()
 
 # Avvia il caricamento in background — il server HTTP parte subito
 _loader_thread = threading.Thread(target=_load_all_data, daemon=True)
@@ -297,26 +308,30 @@ _HEADER = html.Div([
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  LAYOUT PRINCIPALE  — serve_layout è callable → Dash la chiama ad ogni request
-#  In questo modo build_layout viene chiamata CON i dati reali (non vuoti)
+#  LOADING SCREEN  — mostrato finché _loading_done non scatta
 # ─────────────────────────────────────────────────────────────────────────────
 
-_LOADING_TAB = html.Div(
-    "⏳ Dati in caricamento...",
-    style={"color": C["muted"], "padding": "60px 40px",
-           "fontFamily": "monospace", "fontSize": "13px"}
-)
+def _loading_screen():
+    return html.Div([
+        _HEADER,
+        html.Div([
+            html.Div("⏳", style={"fontSize": "48px", "marginBottom": "16px"}),
+            html.Div("Caricamento dati in corso...", style={
+                "fontFamily": "monospace", "fontSize": "16px",
+                "color": C["accent"], "fontWeight": "700",
+            }),
+            html.Div("Il server sta recuperando i dati (FRED, yfinance, CFTC).",
+                style={"fontFamily": "monospace", "fontSize": "11px",
+                       "color": C["muted"], "marginTop": "8px"}),
+            dcc.Interval(id="boot-interval", interval=3_000, max_intervals=-1),
+            html.Div(id="_boot_dummy", style={"display": "none"}),
+        ], style={"display": "flex", "flexDirection": "column",
+                  "alignItems": "center", "justifyContent": "center",
+                  "minHeight": "80vh"}),
+    ], style={"backgroundColor": C["bg"], "minHeight": "100vh"})
 
 
-def _safe(fn, data):
-    """Chiama fn(data) — se fallisce (dati non ancora pronti) mostra placeholder."""
-    try:
-        return fn(data)
-    except Exception:
-        return _LOADING_TAB
-
-
-def serve_layout():
+def _main_layout():
     ff  = _all_data.get("ff",  {})
     vol = _all_data.get("vol", {})
     rt  = _all_data.get("rt",  {})
@@ -324,50 +339,56 @@ def serve_layout():
     mi  = _all_data.get("mi",  {})
     age = _all_data.get("age", {})
     tmr = _all_data.get("tmr", {})
-
     return html.Div([
         _HEADER,
-        dcc.Interval(id="hub-refresh", interval=15_000, max_intervals=-1),
         dcc.Tabs(
-            id="main-tabs",
-            value="fiscal-flow",
-            style={
-                "backgroundColor": C["bg"],
-                "borderBottom":    f"1px solid {C['border']}",
-                "paddingLeft":     "12px",
-                "overflowX":       "auto",
-                "overflowY":       "hidden",
-                "display":         "flex",
-                "flexWrap":        "nowrap",
-            },
+            id="main-tabs", value="fiscal-flow",
+            style={"backgroundColor": C["bg"],
+                   "borderBottom": f"1px solid {C['border']}",
+                   "paddingLeft": "12px", "overflowX": "auto",
+                   "overflowY": "hidden", "display": "flex", "flexWrap": "nowrap"},
             children=[
                 dcc.Tab(label="💧 Fiscal Flow",      value="fiscal-flow",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[_safe(ff_build_layout, ff)]),
+                        children=[ff_build_layout(ff)]),
                 dcc.Tab(label="⚡ Volatility",       value="volatility",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[_safe(vol_build_layout, vol)]),
+                        children=[vol_build_layout(vol)]),
                 dcc.Tab(label="📈 Rates & Treasury", value="rates",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[_safe(rt_build_layout, rt)]),
+                        children=[rt_build_layout(rt)]),
                 dcc.Tab(label="🌊 GLI",              value="gli",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[_safe(gli_build_layout, gli)]),
+                        children=[gli_build_layout(gli)]),
                 dcc.Tab(label="📊 Market Internals", value="market-internals",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[_safe(mi_build_layout, mi)]),
+                        children=[mi_build_layout(mi)]),
                 dcc.Tab(label="🎯 Sentiment",        value="age-indicators",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[_safe(age_build_layout, age)]),
+                        children=[age_build_layout(age)]),
                 dcc.Tab(label="📐 Valuation",        value="timmer",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[_safe(tmr_build_layout, tmr)]),
+                        children=[tmr_build_layout(tmr)]),
             ],
         ),
     ], style={"backgroundColor": C["bg"], "minHeight": "100vh"})
 
 
-app.layout = serve_layout  # callable → Dash chiama serve_layout() ad ogni request
+def serve_layout():
+    if not _loading_done.is_set():
+        return _loading_screen()
+    return _main_layout()
+
+
+app.layout = serve_layout
+
+# Ricarica la pagina ogni 3s durante il boot (clientside, zero overhead server)
+app.clientside_callback(
+    "function(n){if(n&&n>0){window.location.reload();}return '';}",
+    Output("_boot_dummy", "children"),
+    Input("boot-interval", "n_intervals"),
+    prevent_initial_call=True,
+)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -382,9 +403,8 @@ app.layout = serve_layout  # callable → Dash chiama serve_layout() ad ogni req
     Output("g-zscore",     "figure"),
     Input("lookback",      "value"),
     Input("weeks-bar",     "value"),
-    Input("hub-refresh",   "n_intervals"),
 )
-def ff_update(years, weeks, _n):
+def ff_update(years, weeks):
     ff = _all_data.get("ff", {})
     return (
         chart_net_liq(ff, years),
@@ -407,9 +427,8 @@ def ff_update(years, weeks, _n):
     Output("g-pct-gauge",   "figure"),
     Output("g-zscore-vol",  "figure"),
     Input("vol-lookback",   "value"),
-    Input("hub-refresh",    "n_intervals"),
 )
-def vol_update(years, _n):
+def vol_update(years):
     vol = _all_data.get("vol", {})
     return (
         chart_vix_history(vol, years),
@@ -434,9 +453,8 @@ def vol_update(years, _n):
     Output("g-real-yield", "figure"),
     Input("rt-lookback",   "value"),
     Input("rt-heatmap-sid","value"),
-    Input("hub-refresh",   "n_intervals"),
 )
-def rt_update(years, heatmap_sid, _n):
+def rt_update(years, heatmap_sid):
     rt = _all_data.get("rt", {})
     return (
         chart_yield_curve_snapshot(rt),
@@ -461,9 +479,8 @@ def rt_update(years, heatmap_sid, _n):
     Output("g-rolling-corr", "figure"),
     Input("gli-lookback",    "value"),
     Input("gli-market",      "value"),
-    Input("hub-refresh",     "n_intervals"),
 )
-def gli_update(years, market_key, _n):
+def gli_update(years, market_key):
     gli = _all_data.get("gli", {})
     return (
         chart_gli_score(gli, years),
@@ -488,9 +505,8 @@ def gli_update(years, market_key, _n):
     Output("g-mi-hindenburg",  "figure"),
     Output("g-mi-spx",         "figure"),
     Input("mi-lookback",       "value"),
-    Input("hub-refresh",       "n_intervals"),
 )
-def mi_update(years, _n):
+def mi_update(years):
     mi = _all_data.get("mi", {})
     return (
         chart_breadth_ma(mi, years),
@@ -515,9 +531,8 @@ def mi_update(years, _n):
     Output("g-age-fg-gauge",        "figure"),
     Output("g-age-fg-components",   "figure"),
     Input("age-lookback",           "value"),
-    Input("hub-refresh",            "n_intervals"),
 )
-def age_update(years, _n):
+def age_update(years):
     age = _all_data.get("age", {})
     return (
         chart_trin(age, years),
@@ -545,9 +560,8 @@ def age_update(years, _n):
     Output("tmr-alert-log",      "children"),
     Input("tmr-lookback",        "value"),
     Input("tmr-corr-window",     "value"),
-    Input("hub-refresh",         "n_intervals"),
 )
-def tmr_update(years, window, _n):
+def tmr_update(years, window):
     tmr = _all_data.get("tmr", {})
     return _tmr_charts(tmr, years, window)
 
