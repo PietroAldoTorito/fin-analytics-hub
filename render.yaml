@@ -9,3 +9,5 @@ services:
         value: 3.11.0
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: FRED_API_KEY
+        value: "66b1d1ef52903eb3068c962e75229883"

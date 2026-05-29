@@ -38,14 +38,66 @@ _UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/124.0.0.0 Safari/537.36"
 )
+_FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
 _orig_requests_get = _requests_module.get
 _orig_session_get  = _requests_module.Session.get
+
+
+class _FakeResponse:
+    """Risposta HTTP sintetica che imita requests.Response per FRED CSV."""
+    def __init__(self, text, status=200):
+        self.text    = text
+        self.content = text.encode()
+        self.status_code = status
+        self.ok = status < 400
+    def raise_for_status(self):
+        if not self.ok:
+            raise Exception(f"HTTP {self.status_code}")
+
+
+def _fred_csv_via_api(url, kwargs):
+    """
+    Converte una richiesta FRED CSV pubblica in una chiamata all'API FRED
+    con API key — funziona da qualsiasi IP cloud.
+    Restituisce _FakeResponse con il CSV o None se fallisce.
+    """
+    try:
+        from urllib.parse import urlparse, parse_qs
+        qs = parse_qs(urlparse(url).query)
+        series_id = qs.get("id", [None])[0]
+        if not series_id:
+            return None
+        api_url = (
+            f"https://api.stlouisfed.org/fred/series/observations"
+            f"?series_id={series_id}&api_key={_FRED_API_KEY}"
+            f"&file_type=json&sort_order=asc&observation_start=1950-01-01"
+        )
+        r = _orig_requests_get(api_url, headers={"User-Agent": _UA}, timeout=15)
+        if not r.ok:
+            print(f"  [FRED API] {series_id}: HTTP {r.status_code}")
+            return None
+        obs = r.json().get("observations", [])
+        lines = ["DATE,VALUE"] + [
+            f"{o['date']},{o['value']}"
+            for o in obs if o.get("value", ".") != "."
+        ]
+        print(f"  [FRED API] ✓ {series_id}: {len(lines)-1} obs")
+        return _FakeResponse("\n".join(lines))
+    except Exception as e:
+        print(f"  [FRED API] errore {url}: {e}")
+        return None
+
 
 def _get_with_ua(url, **kwargs):
     h = kwargs.get("headers") or {}
     h.setdefault("User-Agent", _UA)
     kwargs["headers"] = h
     kwargs.setdefault("timeout", 10)
+    # Intercetta FRED CSV → API ufficiale (funziona da cloud)
+    if _FRED_API_KEY and "fred.stlouisfed.org/graph/fredgraph.csv" in str(url):
+        fake = _fred_csv_via_api(url, kwargs)
+        if fake:
+            return fake
     return _orig_requests_get(url, **kwargs)
 
 def _session_get_with_ua(self, url, **kwargs):
