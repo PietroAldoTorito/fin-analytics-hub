@@ -232,10 +232,18 @@ def _fetch_fred(series_id):
 
 
 def _fetch_spy_pe():
-    """Try to get SPY/SPX forward P/E and EPS growth from yfinance."""
+    """Try to get SPY/SPX forward P/E and EPS growth from yfinance (timeout 20s)."""
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
+    def _get_info():
+        return yf.Ticker("SPY").info
     try:
-        spy = yf.Ticker("SPY")
-        info = spy.info
+        with ThreadPoolExecutor(max_workers=1) as ex:
+            future = ex.submit(_get_info)
+            try:
+                info = future.result(timeout=20)
+            except (FuturesTimeout, Exception):
+                print("  [warn] SPY.info timeout — skip P/E")
+                return {}
         fwd_pe = info.get("forwardPE") or info.get("trailingPE")
         trailing_pe = info.get("trailingPE")
         eps_growth = info.get("earningsGrowth")  # annual forward
@@ -1139,15 +1147,4 @@ def _build_alert_log(d):
     return html.Div(rows)
 
 
-def _tmr_charts(d, years, window):
-    return (
-        chart_leaderboard(d, years),
-        chart_correlation_heatmap(d, window),
-        chart_cap_vs_equalweight(d, years),
-        chart_stock_bond_corr(d, years),
-        chart_breadth_and_concentration(d, years),
-        chart_erp_and_pe(d, years),
-        chart_cape(d),
-        chart_margins_and_spreads(d, years),
-        _build_alert_log(d),
-    )
+def
