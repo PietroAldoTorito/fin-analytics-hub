@@ -745,14 +745,15 @@ def chart_seasonality_monthly(d):
         except Exception:
             pass
 
-    fig.update_layout(**_LAYOUT_BASE,
-        title=dict(text="Stagionalità Mensile — S&P 500 (storico completo)",
-                   font=dict(size=12, color=C["text"]), x=0),
-        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
-        yaxis =dict(**_LAYOUT_BASE["yaxis"], title="Rend. medio (%)"),
-        yaxis2=dict(showgrid=False, title="% anni positivi", range=[0, 100]),
-        bargap=0.25,
-    )
+    fig.update_layout(**{
+        **_LAYOUT_BASE,
+        "title":  dict(text="Stagionalità Mensile — S&P 500 (storico completo)",
+                       font=dict(size=12, color=C["text"]), x=0),
+        "legend": dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
+        "yaxis":  dict(**_LAYOUT_BASE.get("yaxis", {}), title="Rend. medio (%)"),
+        "yaxis2": dict(showgrid=False, title="% anni positivi", range=[0, 100]),
+        "bargap": 0.25,
+    })
     return fig
 
 
@@ -807,12 +808,13 @@ def chart_seasonality_annual(d):
         )
 
     fig.add_hline(y=0, line=dict(color=C["muted"], width=1))
-    fig.update_layout(**_LAYOUT_BASE,
-        title=dict(text="Profilo Stagionale Annuale — S&P 500 (anno medio cumulato)",
-                   font=dict(size=12, color=C["text"]), x=0),
-        xaxis=dict(**_LAYOUT_BASE["xaxis"], title="Giorno di trading dell'anno"),
-        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
-    )
+    fig.update_layout(**{
+        **_LAYOUT_BASE,
+        "title":  dict(text="Profilo Stagionale Annuale — S&P 500 (anno medio cumulato)",
+                       font=dict(size=12, color=C["text"]), x=0),
+        "xaxis":  dict(**_LAYOUT_BASE.get("xaxis", {}), title="Giorno di trading dell'anno"),
+        "legend": dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
+    })
     return fig
 
 

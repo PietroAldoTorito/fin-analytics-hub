@@ -790,13 +790,14 @@ def chart_spx_price(d, years=2):
             name="NDX 200MA", line=dict(color=C["yellow"], width=1, dash="dot"),
             opacity=0.6), secondary_y=True)
 
-    fig.update_layout(**_LAYOUT_BASE,
-        title=dict(text="S&P 500 & Nasdaq — Prezzo vs 200MA",
-                   font=dict(size=12, color=C["text"]), x=0),
-        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
-        yaxis =dict(**_LAYOUT_BASE["yaxis"], title="S&P 500"),
-        yaxis2=dict(showgrid=False, title="Nasdaq"),
-    )
+    fig.update_layout(**{
+        **_LAYOUT_BASE,
+        "title":  dict(text="S&P 500 & Nasdaq — Prezzo vs 200MA",
+                       font=dict(size=12, color=C["text"]), x=0),
+        "legend": dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
+        "yaxis":  dict(**_LAYOUT_BASE.get("yaxis", {}), title="S&P 500"),
+        "yaxis2": dict(showgrid=False, title="Nasdaq"),
+    })
     return fig
 
 
