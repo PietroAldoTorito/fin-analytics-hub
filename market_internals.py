@@ -556,11 +556,12 @@ def chart_breadth_ma(d, years=2):
         fig.add_hline(y=y_val, line=dict(color=col, dash="dot", width=1),
                       annotation_text=lbl, annotation_font=dict(color=col, size=9))
 
-    fig.update_layout(**_LAYOUT_BASE,
-        title=dict(text="% Stocks Above Moving Average", font=dict(size=12, color=C["text"]), x=0),
-        yaxis=dict(**_LAYOUT_BASE["yaxis"], range=[0, 100]),
-        legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
-    )
+    fig.update_layout(**{
+        **_LAYOUT_BASE,
+        "title": dict(text="% Stocks Above Moving Average", font=dict(size=12, color=C["text"]), x=0),
+        "yaxis": dict(**_LAYOUT_BASE.get("yaxis", {}), range=[0, 100]),
+        "legend": dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10)),
+    })
     return fig
 
 

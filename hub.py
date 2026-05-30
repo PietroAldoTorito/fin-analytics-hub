@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # ─────────────────────────────────────────────────────────────────────────────
 #  TIMEOUT GLOBALE — copre yfinance, urllib, requests e qualsiasi socket
 # ─────────────────────────────────────────────────────────────────────────────
-socket.setdefaulttimeout(12)
+socket.setdefaulttimeout(30)
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  PATCH requests.get — aggiunge User-Agent prima di qualsiasi import
@@ -38,7 +38,7 @@ _UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/124.0.0.0 Safari/537.36"
 )
-_FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
+_FRED_API_KEY = os.environ.get("FRED_API_KEY", "66b1d1ef52903eb3068c962e75229883")
 _orig_requests_get = _requests_module.get
 _orig_session_get  = _requests_module.Session.get
 

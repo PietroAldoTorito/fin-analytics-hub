@@ -732,12 +732,18 @@ def chart_seasonality_monthly(d):
     fig.add_hline(y=0, line=dict(color=C["muted"], width=1), secondary_y=False)
     fig.add_hline(y=50, line=dict(color=C["muted"], dash="dot", width=1), secondary_y=True)
 
-    # Highlight current month
+    # Highlight current month — usa indice numerico (stringa non supportata su asse categorico)
     current_month = pd.Timestamp.now().month
-    if current_month - 1 < len(labels):
-        fig.add_vline(x=labels[current_month - 1],
-                      line=dict(color=C["yellow"], width=2, dash="dash"),
-                      annotation_text="Oggi", annotation_font=dict(color=C["yellow"], size=9))
+    cm_idx = current_month - 1
+    if cm_idx < len(labels):
+        try:
+            fig.add_vrect(x0=cm_idx - 0.4, x1=cm_idx + 0.4,
+                          fillcolor=C["yellow"], opacity=0.08,
+                          line_width=0, annotation_text="Oggi",
+                          annotation_font=dict(color=C["yellow"], size=9),
+                          annotation_position="top left")
+        except Exception:
+            pass
 
     fig.update_layout(**_LAYOUT_BASE,
         title=dict(text="Stagionalità Mensile — S&P 500 (storico completo)",
