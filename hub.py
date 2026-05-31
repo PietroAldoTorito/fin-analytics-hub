@@ -239,6 +239,20 @@ def _watchdog():
 
 threading.Thread(target=_watchdog, daemon=True).start()
 
+# Secondo watchdog: sblocca completamente il layout dopo 200s
+# (copre Timmer che a volte impiega più di 120s con yfinance lento)
+def _watchdog2():
+    if not _loading_done.wait(timeout=200):
+        pass  # già gestito dal primo watchdog
+    # Attendi altri 30s per Timmer se non ancora caricato
+    import time as _t
+    for _ in range(10):
+        if _all_data.get("tmr"):
+            break
+        _t.sleep(3)
+
+threading.Thread(target=_watchdog2, daemon=True).start()
+
 # Avvia il caricamento in background — il server HTTP parte subito
 _loader_thread = threading.Thread(target=_load_all_data, daemon=True)
 _loader_thread.start()
@@ -341,6 +355,8 @@ def _main_layout():
     tmr = _all_data.get("tmr", {})
     return html.Div([
         _HEADER,
+        # Refresh ogni 20s per 5 min — cattura dati che arrivano dopo il layout build
+        dcc.Interval(id="hub-refresh", interval=20_000, max_intervals=15),
         dcc.Tabs(
             id="main-tabs", value="fiscal-flow",
             style={"backgroundColor": C["bg"],
@@ -560,8 +576,9 @@ def age_update(years):
     Output("tmr-alert-log",      "children"),
     Input("tmr-lookback",        "value"),
     Input("tmr-corr-window",     "value"),
+    Input("hub-refresh",         "n_intervals"),
 )
-def tmr_update(years, window):
+def tmr_update(years, window, _n):
     tmr = _all_data.get("tmr", {})
     return _tmr_charts(tmr, years, window)
 
