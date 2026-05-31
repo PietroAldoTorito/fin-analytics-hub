@@ -1147,4 +1147,15 @@ def _build_alert_log(d):
     return html.Div(rows)
 
 
-def
+def _tmr_charts(d, years, window):
+    return (
+        chart_leaderboard(d, years),
+        chart_correlation_heatmap(d, window),
+        chart_cap_vs_equalweight(d, years),
+        chart_stock_bond_corr(d, years),
+        chart_breadth_and_concentration(d, years),
+        chart_erp_and_pe(d, years),
+        chart_cape(d),
+        chart_margins_and_spreads(d, years),
+        _build_alert_log(d),
+    )
