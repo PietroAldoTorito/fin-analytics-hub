@@ -298,8 +298,8 @@ def load_data():
     d = {}
 
     # ── 1. Asset Class Prices (2 year history) ───────────────────────────────
-    tickers_ac = ["SPY", "RSP", "GLD", "TLT", "DJP", "BTC-USD", "EFA", "EEM",
-                  "^SPXA200R", "^SPXA50R", "^VIX"]
+    # ^SPXA200R e ^SPXA50R sono delisted — rimossi per non rallentare il download
+    tickers_ac = ["SPY", "RSP", "GLD", "TLT", "DJP", "BTC-USD", "EFA", "EEM", "^VIX"]
     key_ac = "asset_class_prices"
     if not _is_fresh(con, key_ac):
         try:

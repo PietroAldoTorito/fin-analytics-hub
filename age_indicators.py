@@ -307,7 +307,8 @@ def _compute_cot_index(cot_df, lookback=52):
     """
     if cot_df.empty or "nc_net" not in cot_df.columns:
         return pd.DataFrame()
-    net = cot_df["nc_net"].dropna()
+    # Forza dtype numerico (DuckDB potrebbe restituire object da cache)
+    net = pd.to_numeric(cot_df["nc_net"], errors="coerce").dropna()
 
     def _stoch(x):
         mn, mx = x.min(), x.max()
