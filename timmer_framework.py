@@ -668,7 +668,7 @@ def chart_cap_vs_equalweight(d, years=2):
     rsp = rsp[rsp.index >= cutoff]
 
     if spy.empty or rsp.empty:
-        return _empty_fig("Cap vs Equal-Weight — N/D")
+        raise ValueError("Cap vs Equal-Weight — no SPY/RSP data")
     # Normalize both to 100
     spy_n = spy / spy.iloc[0] * 100
     rsp_n = rsp / rsp.iloc[0] * 100
@@ -726,6 +726,8 @@ def chart_erp_and_pe(d, years=2):
     current_pe = pe_data.get("trailing_pe") or pe_data.get("fwd_pe")
     if not current_pe:
         return _fig_empty("Equity Risk Premium — no P/E data")
+    if spy.empty:
+        return _fig_empty("Equity Risk Premium — no SPY data")
 
     # Historical P/E ≈ current_pe × (current_price / historical_price)
     pe_series = current_pe * (spy.iloc[-1] / spy)
@@ -1152,10 +1154,23 @@ def _build_alert_log(d):
     return html.Div(rows)
 
 
+def _safe_chart(fn, *args):
+    try:
+        return fn(*args)
+    except Exception as e:
+        print(f"  [chart error] {fn.__name__}: {e}")
+        return _fig_empty(f"{fn.__name__} — {type(e).__name__}")
+
+
 def _tmr_charts(d, years, window):
     return (
-        chart_leaderboard(d, years),
-        chart_correlation_heatmap(d, window),
-        chart_cap_vs_equalweight(d, years),
-        chart_stock_bond_corr(d, years),
-        chart_breadth_and_
+        _safe_chart(chart_leaderboard, d, years),
+        _safe_chart(chart_correlation_heatmap, d, window),
+        _safe_chart(chart_cap_vs_equalweight, d, years),
+        _safe_chart(chart_stock_bond_corr, d, years),
+        _safe_chart(chart_breadth_and_concentration, d, years),
+        _safe_chart(chart_erp_and_pe, d, years),
+        _safe_chart(chart_cape, d),
+        _safe_chart(chart_margins_and_spreads, d, years),
+        _build_alert_log(d),
+    )
