@@ -293,6 +293,20 @@ def _fetch_cape():
 #  LOAD DATA  (entry point called by hub.py and __main__)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _df_from_duckdb(con, table):
+    """Legge un DataFrame da DuckDB ripristinando l'indice temporale."""
+    df = con.execute(f"SELECT * FROM {table}").df()
+    date_col = next((c for c in df.columns if c.lower() in ("index", "date", "datetime")), None)
+    if date_col:
+        df.index = pd.to_datetime(df.pop(date_col))
+    else:
+        try:
+            df.index = pd.to_datetime(df.index)
+        except Exception:
+            pass
+    return df.sort_index()
+
+
 def load_data():
     con = _get_con()
     d = {}
@@ -315,8 +329,13 @@ def load_data():
 
     try:
         prices_df = con.execute("SELECT * FROM asset_class_prices").df()
-        prices_df.index = pd.to_datetime(prices_df.index if "index" not in prices_df.columns
-                                         else prices_df.pop("index"))
+        # DuckDB può salvare l'indice come "index", "Date" o "Datetime"
+        _date_col = next((c for c in prices_df.columns
+                          if c.lower() in ("index", "date", "datetime")), None)
+        if _date_col:
+            prices_df.index = pd.to_datetime(prices_df.pop(_date_col))
+        else:
+            prices_df.index = pd.to_datetime(prices_df.index)
         prices_df = prices_df.sort_index()
         d["prices"] = prices_df
     except Exception:
