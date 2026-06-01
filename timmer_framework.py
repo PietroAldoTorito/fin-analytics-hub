@@ -318,9 +318,12 @@ def load_data():
     if not _is_fresh(con, key_ac):
         try:
             prices = _fetch_yf(tickers_ac, period="2y")
+            # reset_index() include la data come colonna (DuckDB non salva l'indice)
+            prices_save = prices.reset_index()
+            prices_save.columns = [str(c) for c in prices_save.columns]
             con.execute("DROP TABLE IF EXISTS asset_class_prices")
             con.execute(
-                "CREATE TABLE asset_class_prices AS SELECT * FROM prices"
+                "CREATE TABLE asset_class_prices AS SELECT * FROM prices_save"
             )
             _touch(con, key_ac)
             print(f"  ✓ Asset class prices fetched ({len(prices)} rows)")
