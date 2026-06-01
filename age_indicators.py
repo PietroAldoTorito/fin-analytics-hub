@@ -1254,8 +1254,4 @@ if __name__ == "__main__":
             chart_seasonality_annual(_d),
             chart_cot(_d, years),
             chart_fear_greed_gauge(_d),
-            chart_fear_greed_components(_d),
-        )
-
-    print(f"🚀  AGE Indicators  →  http://localhost:{PORT}\n")
-    _app.run(debug=False, port=PORT, host="0.0.0.0")
+        

@@ -478,7 +478,10 @@ def load_data():
     # SPX/RSP concentration ratio
     if not prices.empty and "SPY" in prices.columns and "RSP" in prices.columns:
         ratio = (prices["SPY"] / prices["RSP"]).dropna()
-        ratio_norm = ratio / ratio.iloc[0]  # normalize to 1.0
+        if ratio.empty:
+            ratio_norm = ratio
+        else:
+            ratio_norm = ratio / ratio.iloc[0]  # normalize to 1.0
         d["concentration_series"] = ratio_norm
         # trend: 20d change in normalized ratio
         if len(ratio_norm) >= 20:
@@ -664,6 +667,8 @@ def chart_cap_vs_equalweight(d, years=2):
     spy = spy[spy.index >= cutoff]
     rsp = rsp[rsp.index >= cutoff]
 
+    if spy.empty or rsp.empty:
+        return _empty_fig("Cap vs Equal-Weight — N/D")
     # Normalize both to 100
     spy_n = spy / spy.iloc[0] * 100
     rsp_n = rsp / rsp.iloc[0] * 100
@@ -1153,9 +1158,4 @@ def _tmr_charts(d, years, window):
         chart_correlation_heatmap(d, window),
         chart_cap_vs_equalweight(d, years),
         chart_stock_bond_corr(d, years),
-        chart_breadth_and_concentration(d, years),
-        chart_erp_and_pe(d, years),
-        chart_cape(d),
-        chart_margins_and_spreads(d, years),
-        _build_alert_log(d),
-    )
+        chart_breadth_and_
