@@ -714,12 +714,12 @@ def chart_cap_vs_equalweight(d, years=2):
                              fillcolor="rgba(0,212,255,0.05)"), row=2, col=1)
     fig.add_hline(y=1.0, line_dash="dot", line_color=C["muted"], row=2, col=1)
 
-    fig.update_layout(
+    fig.update_layout(**{
         **LAYOUT_BASE,
-        title="Market Concentration: Cap-Weighted vs Equal-Weighted",
-        height=380,
-        legend=dict(orientation="h", y=1.05),
-    )
+        "title": "Market Concentration: Cap-Weighted vs Equal-Weighted",
+        "height": 380,
+        "legend": dict(orientation="h", y=1.05),
+    })
     for row in [1, 2]:
         fig.update_xaxes(**AXIS_BASE, row=row, col=1)
         fig.update_yaxes(**AXIS_BASE, row=row, col=1)
