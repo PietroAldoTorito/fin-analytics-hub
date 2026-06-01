@@ -594,9 +594,9 @@ def chart_leaderboard(d, years=1):
     fig.update_layout(
         **LAYOUT_BASE,
         title="Asset Class Leaderboard (YTD Returns)",
-        xaxis=dict(**AXIS_BASE, title="Return %", zeroline=True,
-                   zerolinecolor=C["muted"], zerolinewidth=1),
-        yaxis=dict(**AXIS_BASE, showgrid=False),
+        xaxis={**AXIS_BASE, "title": "Return %", "zeroline": True,
+               "zerolinecolor": C["muted"], "zerolinewidth": 1},
+        yaxis={**AXIS_BASE, "showgrid": False},
         height=340,
         showlegend=False,
     )
