@@ -540,15 +540,22 @@ def chart_breadth_ma(d, years=2):
         return _empty_fig("% Stocks Above MA — N/D")
 
     fig = go.Figure()
+    def _pct(df):
+        """Clip a 0-100 breadth series; divide by 100 if values are raw (>100)."""
+        v = df["value"].copy()
+        if v.max() > 100:
+            v = v / 100.0
+        return v.clip(0, 100)
+
     if not sp200.empty:
-        fig.add_trace(go.Scatter(x=sp200.index, y=sp200["value"],
+        fig.add_trace(go.Scatter(x=sp200.index, y=_pct(sp200),
             name="S&P >200MA", line=dict(color=C["green"], width=2),
             fill="tozeroy", fillcolor="rgba(0,230,118,0.05)"))
     if not sp50.empty:
-        fig.add_trace(go.Scatter(x=sp50.index, y=sp50["value"],
+        fig.add_trace(go.Scatter(x=sp50.index, y=_pct(sp50),
             name="S&P >50MA", line=dict(color=C["accent"], width=2)))
     if not nq200.empty:
-        fig.add_trace(go.Scatter(x=nq200.index, y=nq200["value"],
+        fig.add_trace(go.Scatter(x=nq200.index, y=_pct(nq200),
             name="NDX >200MA", line=dict(color=C["yellow"], width=1.5, dash="dash")))
 
     for y_val, col, lbl in [(80, C["red"], "80%"), (60, C["yellow"], "60%"),

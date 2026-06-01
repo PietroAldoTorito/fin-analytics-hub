@@ -834,14 +834,14 @@ def chart_cot(d, years=4):
     # Row 1: raw net positions
     if not cot_raw.empty:
         if "nc_net" in cot_raw.columns:
-            nc = cot_raw["nc_net"].dropna()
+            nc = pd.to_numeric(cot_raw["nc_net"], errors="coerce").dropna()
             nc_colors = [C["red"] if v > 0 else C["green"] for v in nc]
             fig.add_trace(go.Bar(
                 x=nc.index, y=nc.values, name="Large Specs Net",
                 marker_color=nc_colors, opacity=0.75,
             ), row=1, col=1)
         if "comm_net" in cot_raw.columns:
-            cm = cot_raw["comm_net"].dropna()
+            cm = pd.to_numeric(cot_raw["comm_net"], errors="coerce").dropna()
             fig.add_trace(go.Scatter(
                 x=cm.index, y=cm.values, name="Commercials Net",
                 line=dict(color=C["accent"], width=2),
