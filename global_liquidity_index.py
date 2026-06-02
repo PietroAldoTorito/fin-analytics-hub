@@ -709,7 +709,7 @@ def build_kpi_row(data: dict) -> html.Div:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_app_layout(data: dict) -> html.Div:
-    gli = data["gli"]
+    gli = data.get("gli", pd.DataFrame())
     last_date = pd.to_datetime(gli["date"]).max().strftime("%b %Y") if not gli.empty else "N/D"
 
     return html.Div([

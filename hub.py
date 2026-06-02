@@ -345,6 +345,17 @@ def _loading_screen():
     ], style={"backgroundColor": C["bg"], "minHeight": "100vh"})
 
 
+def _safe_layout(fn, data, name=""):
+    """Wrapper: se build_layout crasha restituisce un placeholder."""
+    try:
+        return fn(data)
+    except Exception as e:
+        print(f"  [layout error] {name}: {e}")
+        return html.Div(f"⏳ {name} — dati in aggiornamento...",
+                        style={"color": C["muted"], "padding": "40px",
+                               "fontFamily": "monospace"})
+
+
 def _main_layout():
     ff  = _all_data.get("ff",  {})
     vol = _all_data.get("vol", {})
@@ -355,7 +366,6 @@ def _main_layout():
     tmr = _all_data.get("tmr", {})
     return html.Div([
         _HEADER,
-        # Refresh ogni 20s per 5 min — cattura dati che arrivano dopo il layout build
         dcc.Interval(id="hub-refresh", interval=20_000, max_intervals=15),
         dcc.Tabs(
             id="main-tabs", value="fiscal-flow",
@@ -366,25 +376,25 @@ def _main_layout():
             children=[
                 dcc.Tab(label="💧 Fiscal Flow",      value="fiscal-flow",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[ff_build_layout(ff)]),
+                        children=[_safe_layout(ff_build_layout, ff, "Fiscal Flow")]),
                 dcc.Tab(label="⚡ Volatility",       value="volatility",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[vol_build_layout(vol)]),
+                        children=[_safe_layout(vol_build_layout, vol, "Volatility")]),
                 dcc.Tab(label="📈 Rates & Treasury", value="rates",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[rt_build_layout(rt)]),
+                        children=[_safe_layout(rt_build_layout, rt, "Rates")]),
                 dcc.Tab(label="🌊 GLI",              value="gli",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[gli_build_layout(gli)]),
+                        children=[_safe_layout(gli_build_layout, gli, "GLI")]),
                 dcc.Tab(label="📊 Market Internals", value="market-internals",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[mi_build_layout(mi)]),
+                        children=[_safe_layout(mi_build_layout, mi, "Market Internals")]),
                 dcc.Tab(label="🎯 Sentiment",        value="age-indicators",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[age_build_layout(age)]),
+                        children=[_safe_layout(age_build_layout, age, "Sentiment")]),
                 dcc.Tab(label="📐 Valuation",        value="timmer",
                         style=_TAB, selected_style=_TAB_SEL,
-                        children=[tmr_build_layout(tmr)]),
+                        children=[_safe_layout(tmr_build_layout, tmr, "Valuation")]),
             ],
         ),
     ], style={"backgroundColor": C["bg"], "minHeight": "100vh"})
